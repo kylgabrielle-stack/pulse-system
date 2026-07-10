@@ -1,0 +1,191 @@
+{
+  "counters": {
+    "users": 4,
+    "barangays": 8,
+    "personnel": 5,
+    "fpMethods": 12,
+    "docReports": 0,
+    "rpfpRecords": 0,
+    "reviewLogs": 0
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "passwordHash": "$2a$10$SgpPq.NCGzhEmR/OaxFKv.dbuboSkGJqXiTd2ed.8OvA8KEX1WEQ2",
+      "fullName": "System Administrator",
+      "role": "admin",
+      "createdAt": "2026-07-10T10:03:56.030Z"
+    },
+    {
+      "id": 2,
+      "username": "staff",
+      "passwordHash": "$2a$10$yLXUbHfPMbXU8AnmHYQ8ueJ2lsUGf9evXyPgXabFaYCvcEVWu.8xO",
+      "fullName": "Juan Dela Cruz",
+      "role": "staff",
+      "createdAt": "2026-07-10T10:03:56.030Z"
+    },
+    {
+      "id": 3,
+      "username": "sectionhead",
+      "passwordHash": "$2a$10$A4pC04nFKYmBaHXPDwNjLewO5mOlI/zAOu7ySntGZtCDm0qBjP.I2",
+      "fullName": "Maria Santos",
+      "role": "section_head",
+      "createdAt": "2026-07-10T10:03:56.030Z"
+    },
+    {
+      "id": 4,
+      "username": "popofficer",
+      "passwordHash": "$2a$10$Il5T4W.PFik3XXhWF2bdie2rIolU8ZuA94rCIX/6WNcDpamP6UYSa",
+      "fullName": "Ramon Reyes",
+      "role": "population_officer",
+      "createdAt": "2026-07-10T10:03:56.030Z"
+    }
+  ],
+  "barangays": [
+    {
+      "id": 1,
+      "municipality": "Silang",
+      "barangay": "Biga I"
+    },
+    {
+      "id": 2,
+      "municipality": "Silang",
+      "barangay": "Biga II"
+    },
+    {
+      "id": 3,
+      "municipality": "Silang",
+      "barangay": "Poblacion I"
+    },
+    {
+      "id": 4,
+      "municipality": "Dasmariñas",
+      "barangay": "Salawag"
+    },
+    {
+      "id": 5,
+      "municipality": "Dasmariñas",
+      "barangay": "Zone I (Poblacion)"
+    },
+    {
+      "id": 6,
+      "municipality": "Tagaytay",
+      "barangay": "Sungay East"
+    },
+    {
+      "id": 7,
+      "municipality": "Tagaytay",
+      "barangay": "Maharlika East"
+    },
+    {
+      "id": 8,
+      "municipality": "Trece Martires",
+      "barangay": "Cabezas"
+    }
+  ],
+  "personnel": [
+    {
+      "id": 1,
+      "fullName": "Juan Dela Cruz",
+      "position": "Technical Section Staff"
+    },
+    {
+      "id": 2,
+      "fullName": "Maria Santos",
+      "position": "Technical Section Head"
+    },
+    {
+      "id": 3,
+      "fullName": "Ramon Reyes",
+      "position": "Provincial Population Officer"
+    },
+    {
+      "id": 4,
+      "fullName": "Ana Lim",
+      "position": "Technical Section Staff"
+    },
+    {
+      "id": 5,
+      "fullName": "Pedro Bautista",
+      "position": "Community Volunteer"
+    }
+  ],
+  "fpMethods": [
+    {
+      "id": 1,
+      "code": "1",
+      "label": "Condom",
+      "category": "Artificial"
+    },
+    {
+      "id": 2,
+      "code": "2",
+      "label": "IUD",
+      "category": "Artificial"
+    },
+    {
+      "id": 3,
+      "code": "3",
+      "label": "Pills",
+      "category": "Artificial"
+    },
+    {
+      "id": 4,
+      "code": "4",
+      "label": "Injectable",
+      "category": "Artificial"
+    },
+    {
+      "id": 5,
+      "code": "5",
+      "label": "Vasectomy",
+      "category": "Artificial"
+    },
+    {
+      "id": 6,
+      "code": "6",
+      "label": "Tubal Ligation",
+      "category": "Artificial"
+    },
+    {
+      "id": 7,
+      "code": "7",
+      "label": "Implant",
+      "category": "Artificial"
+    },
+    {
+      "id": 8,
+      "code": "8",
+      "label": "CMM / Billings",
+      "category": "Modern NFP"
+    },
+    {
+      "id": 9,
+      "code": "9",
+      "label": "BBT",
+      "category": "Modern NFP"
+    },
+    {
+      "id": 10,
+      "code": "10",
+      "label": "Sympto-Thermal",
+      "category": "Modern NFP"
+    },
+    {
+      "id": 11,
+      "code": "11",
+      "label": "SDM",
+      "category": "Modern NFP"
+    },
+    {
+      "id": 12,
+      "code": "12",
+      "label": "LAM",
+      "category": "Modern NFP"
+    }
+  ],
+  "docReports": [],
+  "rpfpRecords": [],
+  "reviewLogs": []
+}
