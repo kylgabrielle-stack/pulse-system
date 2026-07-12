@@ -453,7 +453,7 @@ function ActivityForm({ existing, onCancel, onSubmit, user }) {
         <>
           <div style={{ fontWeight: 600, marginBottom: 10, color: "#0B3B60" }}>Participant Profile (RPFP Form 1)</div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", fontSize: 12 }}>
+            <table style={{ width: "100%", fontSize: 12, tableLayout: "fixed"  }}>
               <thead>
                 <tr style={{ background: "#EEF2F6" }}>
                   <Th>Name</Th><Th>Sex</Th><Th>Civil Status</Th><Th>Birthdate</Th><Th>Address / HH ID</Th>
@@ -559,7 +559,7 @@ function TabButton({ active, onClick, icon, label }) {
 /* ---------------- Shared styles ---------------- */
 const labelStyle = { fontSize: 11.5, fontWeight: 600, color: "#5C7089", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.4 };
 const inputStyle = { width: "100%", padding: "9px 11px", borderRadius: 8, border: "1px solid #C7D2DE", fontSize: 13.5, fontFamily: "inherit", boxSizing: "border-box" };
-const cellInput = { width: "100%", minWidth: 90, padding: "5px 6px", borderRadius: 5, border: "1px solid #DCE3EC", fontSize: 12, fontFamily: "inherit" };
+const cellInput = { width: "100%", padding: "5px 6px", borderRadius: 5, border: "1px solid #DCE3EC", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" };
 const selectSmall = { padding: "7px 10px", borderRadius: 8, border: "1px solid #C7D2DE", fontSize: 13 };
 const hrStyle = { border: "none", borderTop: "1px solid #DCE3EC", margin: "18px 0" };
 const btnPrimary = { display: "inline-flex", alignItems: "center", padding: "9px 16px", background: "#0B3B60", color: "white", border: "none", borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: "pointer" };
