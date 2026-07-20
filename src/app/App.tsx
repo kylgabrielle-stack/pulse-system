@@ -192,8 +192,8 @@ const MATRIX_CFG: Record<Category, {
     ageBrackets: ["10–14", "15–19", "20 & above"],
   },
   GAD: {
-    typeColumns: ["Gender Sensitivity Training", "VAWC Orientation", "GAD Focal Point Meeting", "Women's Month Activity", "Other"],
-    typeLabels:  ["GST", "VAWC", "Focal Pt.", "WMA", "Other"],
+    typeColumns: ["GAD", "KATROPA"],
+    typeLabels:  ["GAD", "KATROPA"],
     ageBrackets: ["18–29", "30–49", "50 & above"],
   },
 };
@@ -1742,6 +1742,7 @@ function PrintPreviewModal({ target, onClose, onToast }: {
 }) {
   const [ready, setReady]             = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [showPrintTip, setShowPrintTip] = useState(true);
 
   const isSingle = target.mode === "single";
   const isMatrix = target.mode === "matrix";
@@ -1767,7 +1768,7 @@ function PrintPreviewModal({ target, onClose, onToast }: {
           background: white !important; margin: 0 !important; padding: 0 !important;
           box-shadow: none !important; border-radius: 0 !important;
         }
-        @page { size: A4 ${isSingle ? "portrait" : "landscape"}; margin: ${isSingle ? "10mm" : "6mm"}; }
+        @page { size: A4 ${isSingle ? "portrait" : "landscape"}; margin: 0.5in; }
       }
     `;
     document.head.appendChild(style);
@@ -1781,6 +1782,12 @@ function PrintPreviewModal({ target, onClose, onToast }: {
     : isMatrix
       ? `${matrixT!.category} Monthly Summary — ${matrixT!.month} ${matrixT!.year}`
       : "Documentation Reports Summary";
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = title;
+    return () => { document.title = previousTitle; };
+  }, [title]);
   const subtitle = isSingle
     ? `${(target as { record: DocRecord }).record.reportMonth} ${(target as { record: DocRecord }).record.reportYear} · ${(target as { record: DocRecord }).record.barangay}, ${(target as { record: DocRecord }).record.municipality}`
     : isMatrix
@@ -1852,10 +1859,6 @@ function PrintPreviewModal({ target, onClose, onToast }: {
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button disabled={isEmpty} onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-200 text-sm font-semibold text-foreground hover:bg-zinc-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-              <Printer size={13} /> Print
-            </button>
             <button disabled={dlDisabled} onClick={handleDownloadPDF}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[130px] justify-center"
              >
@@ -1869,6 +1872,17 @@ function PrintPreviewModal({ target, onClose, onToast }: {
             </button>
           </div>
         </div>
+        {showPrintTip && (
+          <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 text-sm text-amber-900 flex items-start justify-between gap-3 print:hidden">
+            <p className="max-w-3xl">
+              For a cleaner printout, disable "Headers and footers" in your browser's print dialog (usually under "More settings").
+            </p>
+            <button onClick={() => setShowPrintTip(false)}
+              className="text-amber-800 font-semibold hover:underline">
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* ── Scrollable gray backdrop ── */}
         <div className="flex-1 overflow-auto bg-zinc-400/60 py-8 px-4">
@@ -2006,12 +2020,6 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
                 onClick={() => setPreviewTarget({ mode: "summary", records: filtered,
                   filters: { cat: filterCat, month: filterMonth, district: filterDist } })}
                 className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border bg-card text-foreground text-sm font-semibold hover:bg-accent transition-all">
-                <Printer size={14} /> Print
-              </button>
-              <button
-                onClick={() => setPreviewTarget({ mode: "summary", records: filtered,
-                  filters: { cat: filterCat, month: filterMonth, district: filterDist } })}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border bg-card text-foreground text-sm font-semibold hover:bg-accent transition-all">
                 <Download size={14} /> Export PDF
               </button>
               {(["RPFP","AHD","GAD"] as Category[]).map(cat => (
@@ -2143,11 +2151,6 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
                       <td className="px-3 py-3 text-xs whitespace-nowrap">{rec.documentedBy}</td>
                       <td className="px-3 py-3 print:hidden" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-0.5">
-                          <button
-                            onClick={() => setPreviewTarget({ mode: "single", record: rec })}
-                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="Print preview">
-                            <Printer size={13} />
-                          </button>
                           <button
                             onClick={() => setPreviewTarget({ mode: "single", record: rec })}
                             className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="Export PDF">
@@ -2293,11 +2296,6 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
                   <button
                     onClick={() => { setPreviewTarget({ mode: "single", record: viewTarget }); setViewTarget(null); }}
                     className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-border text-sm font-semibold hover:bg-accent transition-all">
-                    <Printer size={13} /> Print
-                  </button>
-                  <button
-                    onClick={() => { setPreviewTarget({ mode: "single", record: viewTarget }); setViewTarget(null); }}
-                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-border text-sm font-semibold hover:bg-accent transition-all">
                     <Download size={13} /> Export PDF
                   </button>
                 </div>
@@ -2433,7 +2431,7 @@ function MonthlySummaryView({ user, onLogout, records, onBack }: {
             <div className="flex-1" />
             <button onClick={openMatrix}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm font-semibold text-foreground hover:bg-accent transition-all">
-              <Printer size={13} /> Print / Export PDF
+              <Download size={13} /> Export PDF
             </button>
           </div>
 
@@ -3459,11 +3457,7 @@ function RPFPRosterListView({
               </button>
               <button onClick={handlePrint}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
-                <Printer size={14} /> Print
-              </button>
-              <button onClick={() => setShowPdfPreview(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
-                <Download size={14} /> Download PDF
+                <Printer size={14} /> Print and Download
               </button>
             </div>
           </div>
