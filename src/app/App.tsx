@@ -3219,6 +3219,8 @@ function RPFPRosterListView({
   const [filterDate, setFilterDate] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [toast, setToast] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
 
   const municipalities = useMemo(() => Array.from(new Set(forms.map(f => f.municipality).filter(Boolean))).sort(), [forms]);
@@ -3394,12 +3396,12 @@ function RPFPRosterListView({
 
   const handlePDF = async () => {
     if (!selectedForm) return;
-    const content = buildRosterHTMLContent(selectedForm);
-    const container = document.createElement("div");
-    // Must be within viewport for html2canvas to render; hidden behind the modal overlay (z-index 50)
-    container.style.cssText = "position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:49;pointer-events:none;";
-    container.innerHTML = content;
-    document.body.appendChild(container);
+    const el = document.getElementById("pulse-print-root");
+    if (!el) {
+      setToast("Unable to locate PDF preview content.");
+      return;
+    }
+    setPdfGenerating(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const h2p = ((await import("html2pdf.js")) as any).default;
@@ -3409,9 +3411,14 @@ function RPFPRosterListView({
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-      }).from(container).save();
+      }).from(el).save();
+      setToast(`Downloaded RPFP-Form1-${selectedForm.municipality}-${selectedForm.barangay}-${selectedForm.dateConduct || "no-date"}.pdf`);
+    } catch (error) {
+      console.error("Failed to generate RPFP Form 1 PDF:", error);
+      setToast("PDF generation failed, please try again.");
+      throw error;
     } finally {
-      document.body.removeChild(container);
+      setPdfGenerating(false);
     }
   };
 
@@ -3476,15 +3483,23 @@ function RPFPRosterListView({
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <X size={14} /> Close
                     </button>
-                    <button onClick={() => { handlePDF(); setShowPdfPreview(false); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors">
-                      <Download size={14} /> Download PDF
+                    <button onClick={async () => {
+                        try {
+                          await handlePDF();
+                          setShowPdfPreview(false);
+                        } catch {
+                          // Error already handled in handlePDF
+                        }
+                      }}
+                      disabled={pdfGenerating}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Download size={14} /> {pdfGenerating ? "Generating…" : "Download PDF"}
                     </button>
                   </div>
                 </div>
                 {/* Preview content — rendered from the same HTML used for PDF */}
                 <div className="overflow-auto p-6 bg-gray-50 rounded-b-xl">
-                  <div className="bg-white shadow-sm rounded border border-gray-200"
+                  <div id="pulse-print-root" className="bg-white shadow-sm rounded border border-gray-200"
                     dangerouslySetInnerHTML={{ __html: buildRosterHTMLContent(selectedForm) }} />
                 </div>
               </div>
