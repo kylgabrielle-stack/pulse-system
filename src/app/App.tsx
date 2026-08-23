@@ -1,4 +1,13 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import pulseLogo from "@/imports/2c0ca284-4a1b-492f-b3a8-a2b4559034fe.jpg";
 import { supabase, seedMunicipalitiesIfEmpty, ensureUserProfile } from "@/lib/supabase";
 import {
@@ -59,6 +68,107 @@ const MUNICIPALITY_DATA: Record<string, MunicipalityInfo> = {
 // Returns the barangay list for a given municipality key, or [] if not found / not yet populated.
 function munBarangays(mun: string): string[] {
   return MUNICIPALITY_DATA[mun]?.barangays ?? [];
+}
+
+function MunicipalityBarangayFilter({
+  municipality,
+  barangay,
+  onMunicipalityChange,
+  onBarangayChange,
+  municipalityLabel = "Municipality",
+  barangayLabel = "Barangay",
+  selectAllMunicipalityText = "All Municipalities",
+  selectAllBarangayText = "All Barangays",
+  disabled = false,
+}: {
+  municipality: string;
+  barangay: string;
+  onMunicipalityChange: (value: string) => void;
+  onBarangayChange: (value: string) => void;
+  municipalityLabel?: string;
+  barangayLabel?: string;
+  selectAllMunicipalityText?: string;
+  selectAllBarangayText?: string;
+  disabled?: boolean;
+}) {
+  const municipalityOptions = Object.keys(MUNICIPALITY_DATA).sort();
+  const barangayOptions = useMemo(() => munBarangays(municipality), [municipality]);
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="relative flex items-center gap-2">
+        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">{municipalityLabel}</label>
+        <div className="relative">
+          <select
+            value={municipality}
+            onChange={e => {
+              onMunicipalityChange(e.target.value);
+              onBarangayChange("");
+            }}
+            disabled={disabled}
+            className="appearance-none h-10 bg-card border border-border rounded-lg px-3 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="">{selectAllMunicipalityText}</option>
+            {municipalityOptions.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        </div>
+      </div>
+
+      <div className="relative flex items-center gap-2">
+        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">{barangayLabel}</label>
+        <div className="relative">
+          <select
+            value={barangay}
+            onChange={e => onBarangayChange(e.target.value)}
+            disabled={disabled || !municipality}
+            className="appearance-none h-10 bg-card border border-border rounded-lg px-3 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="">{municipality ? selectAllBarangayText : "Select municipality first"}</option>
+            {barangayOptions.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterChips({ items, onRemove, onClearAll }: {
+  items: { key: string; label: string }[];
+  onRemove: (key: string) => void;
+  onClearAll?: () => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {items.map(item => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => onRemove(item.key)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+        >
+          <span>{item.label}</span>
+          <X size={12} className="text-muted-foreground" />
+        </button>
+      ))}
+      {onClearAll && (
+        <button
+          type="button"
+          onClick={onClearAll}
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent transition-colors"
+        >
+          Clear All Filters
+        </button>
+      )}
+    </div>
+  );
 }
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -699,6 +809,47 @@ function SignaturePad({ value, onChange, label }: { value: string; onChange: (d:
   );
 }
 
+function OverviewChartCard({
+  title,
+  accentClass,
+  accentColor,
+  data,
+}: {
+  title: string;
+  accentClass: string;
+  accentColor: string;
+  data: Array<{ name: string; count: number }>;
+}) {
+  const hasData = data && data.length > 0 && data.some(item => item.count > 0);
+
+  return (
+    <div className="bg-card border border-border rounded-xl shadow-sm p-4 h-full">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
+        <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${accentClass}`}>
+          {title.split(" ")[0]}
+        </span>
+      </div>
+
+      <div className="h-52 w-full">
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 10, left: 0, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value: number) => [value, "Count"]} />
+              <Bar dataKey="count" fill={accentColor} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DashboardView({ user, onLogout, records, onEncode, onEncodeForm1, onViewRosterList, onViewRecords, onViewRecordsForMonth, onViewMonthlySummary }: {
   user: string; onLogout: () => void;
   records: DocRecord[];
@@ -714,6 +865,26 @@ function DashboardView({ user, onLogout, records, onEncode, onEncodeForm1, onVie
   const thisYear   = now.getFullYear();
   const monthCount = records.filter(r => r.reportMonth === thisMonth).length;
   const totalPax   = records.reduce((s, r) => s + (parseInt(r.actualParticipants) || 0), 0);
+
+  const overviewData = useMemo(() => {
+    const buildChartData = (category: Category) => {
+      const filtered = records.filter(r => r.category === category);
+      const map = new Map<string, number>();
+
+      filtered.forEach(record => {
+        const key = record.sessionType || "Unspecified";
+        map.set(key, (map.get(key) || 0) + 1);
+      });
+
+      return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+    };
+
+    return {
+      RPFP: buildChartData("RPFP"),
+      AHD: buildChartData("AHD"),
+      GAD: buildChartData("GAD"),
+    };
+  }, [records]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -814,6 +985,30 @@ function DashboardView({ user, onLogout, records, onEncode, onEncodeForm1, onVie
             </div>
           </div>
 
+
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-foreground">Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <OverviewChartCard
+                title="RPFP Overview"
+                accentClass="bg-teal-100 text-teal-700"
+                accentColor="#0f766e"
+                data={overviewData.RPFP}
+              />
+              <OverviewChartCard
+                title="AHD Overview"
+                accentClass="bg-orange-100 text-orange-700"
+                accentColor="#f59e0b"
+                data={overviewData.AHD}
+              />
+              <OverviewChartCard
+                title="GAD Overview"
+                accentClass="bg-violet-100 text-violet-700"
+                accentColor="#8b5cf6"
+                data={overviewData.GAD}
+              />
+            </div>
+          </div>
 
           {/* Recent */}
           {records.length > 0 && (
@@ -1947,8 +2142,13 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
   const [filterCat, setFilterCat]   = useState<Category | "">("");
   const [filterType, setFilterType] = useState("");
   const [filterDist, setFilterDist] = useState("");
+  const [filterMun, setFilterMun]   = useState("");
+  const [filterBgy, setFilterBgy]   = useState("");
+  const [filterStatus, setFilterStatus] = useState<DocRecord["status"] | "">("");
   const [filterMonth, setFilterMonth] = useState(initialFilterMonth);
   const [filterYear, setFilterYear]   = useState("");
+  const [sortConfig, setSortConfig] = useState<{ key: "dateConduct" | "actualParticipants" | "total"; direction: "asc" | "desc" }>({ key: "dateConduct", direction: "desc" });
+  const [showStatsBreakdown, setShowStatsBreakdown] = useState(false);
   const [deleteTarget, setDeleteTarget]   = useState<DocRecord | null>(null);
   const [viewTarget, setViewTarget]       = useState<DocRecord | null>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
@@ -1962,19 +2162,67 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
     [records]
   );
 
-  const filtered = useMemo(() => records
-    .filter(r => {
+  const clearAllFilters = () => {
+    setSearch("");
+    setFilterCat("");
+    setFilterType("");
+    setFilterDist("");
+    setFilterMun("");
+    setFilterBgy("");
+    setFilterStatus("");
+    setFilterMonth(initialFilterMonth);
+    setFilterYear("");
+  };
+
+  const filterChips = useMemo(() => {
+    const chips: { key: string; label: string }[] = [];
+    if (search) chips.push({ key: "search", label: `Search: ${search}` });
+    if (filterCat) chips.push({ key: "type", label: `Type: ${filterCat}` });
+    if (filterYear) chips.push({ key: "year", label: `Year: ${filterYear}` });
+    if (filterMonth) chips.push({ key: "month", label: `Month: ${filterMonth}` });
+    if (filterDist) chips.push({ key: "district", label: `District: ${filterDist}` });
+    if (filterMun) chips.push({ key: "municipality", label: `Municipality: ${filterMun}` });
+    if (filterBgy) chips.push({ key: "barangay", label: `Barangay: ${filterBgy}` });
+    if (filterStatus) chips.push({ key: "status", label: `Status: ${filterStatus}` });
+    return chips;
+  }, [search, filterCat, filterYear, filterMonth, filterDist, filterMun, filterBgy, filterStatus]);
+
+  const filtered = useMemo(() => {
+    const sorted = records.filter(r => {
       if (search && !`${r.code} ${r.barangay} ${r.municipality} ${r.documentedBy} ${r.venue} ${r.sessionType}`.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterCat   && r.category    !== filterCat)   return false;
       if (filterType  && r.sessionType !== filterType)  return false;
       if (filterDist  && r.district    !== filterDist)  return false;
+      if (filterMun   && r.municipality !== filterMun) return false;
+      if (filterBgy   && r.barangay    !== filterBgy) return false;
+      if (filterStatus && r.status !== filterStatus) return false;
       if (filterMonth && r.reportMonth !== filterMonth) return false;
       if (filterYear  && r.reportYear  !== filterYear)  return false;
       return true;
-    })
-    .sort((a, b) => b.dateConduct.localeCompare(a.dateConduct)),
-    [records, search, filterCat, filterType, filterDist, filterMonth, filterYear]
-  );
+    });
+
+    const getComparableValue = (rec: DocRecord, key: "dateConduct" | "actualParticipants" | "total") => {
+      if (key === "dateConduct") return rec.dateConduct || "";
+      const numeric = Number(rec.actualParticipants || 0);
+      if (key === "actualParticipants") return numeric;
+      return Number(rec.actualParticipants || 0);
+    };
+
+    return [...sorted].sort((a, b) => {
+      const aValue = getComparableValue(a, sortConfig.key);
+      const bValue = getComparableValue(b, sortConfig.key);
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortConfig.direction === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortConfig.direction === "asc"
+        ? Number(aValue) - Number(bValue)
+        : Number(bValue) - Number(aValue);
+    });
+  }, [records, search, filterCat, filterType, filterDist, filterMun, filterBgy, filterStatus, filterMonth, filterYear, sortConfig]);
 
   const totals = useMemo(() => ({
     actual: filtered.reduce((s, r) => s + (parseInt(r.actualParticipants) || 0), 0),
@@ -2033,144 +2281,230 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2.5 print:hidden">
+          <div className="grid grid-cols-3 gap-2.5 print:hidden overflow-hidden">
             {[
               { label:"Participants", value:totals.actual, color:"#d9544a", bg:"rgba(217,84,74,0.08)",  border:"rgba(217,84,74,0.18)" },
               { label:"Male",         value:totals.male,   color:"#3c4650", bg:"rgba(60,70,80,0.07)",   border:"rgba(60,70,80,0.14)"  },
               { label:"Female",       value:totals.female, color:"#b83a36", bg:"rgba(184,58,54,0.07)",  border:"rgba(184,58,54,0.15)" },
             ].map(({ label, value, color, bg, border }) => (
-              <div key={label} className="rounded-lg px-3.5 py-3" style={{ background: bg, border: `1px solid ${border}` }}>
+              <button
+                key={label}
+                type="button"
+                onClick={() => setShowStatsBreakdown(v => !v)}
+                className="rounded-lg px-3.5 py-3 text-left transition-all hover:shadow-sm overflow-hidden"
+                style={{ background: bg, border: `1px solid ${border}` }}
+              >
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
                 <p className="text-2xl font-bold mt-0.5" style={{ color }}>{value}</p>
-              </div>
+              </button>
             ))}
           </div>
+          {showStatsBreakdown && (
+            <div className="rounded-xl border border-border bg-card p-3 text-sm text-foreground overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold">Current filtered totals</span>
+                <button type="button" onClick={() => setShowStatsBreakdown(false)} className="text-xs text-muted-foreground hover:text-foreground">Hide</button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="rounded-lg bg-secondary/30 px-2 py-2"><span className="block text-muted-foreground">Participants</span><strong>{totals.actual}</strong></div>
+                <div className="rounded-lg bg-secondary/30 px-2 py-2"><span className="block text-muted-foreground">Male</span><strong>{totals.male}</strong></div>
+                <div className="rounded-lg bg-secondary/30 px-2 py-2"><span className="block text-muted-foreground">Female</span><strong>{totals.female}</strong></div>
+                <div className="rounded-lg bg-secondary/30 px-2 py-2"><span className="block text-muted-foreground">Age 10–14</span><strong>{totals.b1}</strong></div>
+                <div className="rounded-lg bg-secondary/30 px-2 py-2"><span className="block text-muted-foreground">Age 15–19</span><strong>{totals.b2}</strong></div>
+                <div className="rounded-lg bg-secondary/30 px-2 py-2"><span className="block text-muted-foreground">Age 20+</span><strong>{totals.b3}</strong></div>
+              </div>
+            </div>
+          )}
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-2 print:hidden flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search code, barangay, municipality, encoder…"
-                className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all" />
+          <div className="space-y-3 print:hidden">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search size={14} className="absolute text-muted-foreground pointer-events-none" style={{ left: 12, top: "50%", transform: "translateY(-50%)" }} />
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search code, barangay, municipality, encoder…"
+                  className="w-full h-10 bg-card border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all" style={{ paddingLeft: 36, paddingRight: 12 }} />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <select value={filterCat} onChange={e => setFilterCat(e.target.value as Category | "")}
+                    className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
+                    <option value="">All Types</option>
+                    <option value="RPFP">RPFP</option>
+                    <option value="AHD">AHD</option>
+                    <option value="GAD">GAD</option>
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
+                    className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
+                    <option value="">All Years</option>
+                    {allYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
+                    className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
+                    <option value="">All Months</option>
+                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select value={filterDist} onChange={e => setFilterDist(e.target.value)}
+                    className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
+                    <option value="">All Districts</option>
+                    {["I","II","III","IV","V"].map(d => <option key={d} value={d}>District {d}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as DocRecord["status"] | "")}
+                    className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
+                    <option value="">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Reviewed">Reviewed</option>
+                    <option value="Approved">Approved</option>
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                <div className="relative flex items-end">
+                  <MunicipalityBarangayFilter
+                    municipality={filterMun}
+                    barangay={filterBgy}
+                    onMunicipalityChange={setFilterMun}
+                    onBarangayChange={setFilterBgy}
+                    municipalityLabel="Municipality"
+                    barangayLabel="Barangay"
+                    selectAllMunicipalityText="All Municipalities"
+                    selectAllBarangayText="All Barangays"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {/* Category filter */}
-              <div className="relative">
-                <select value={filterCat} onChange={e => setFilterCat(e.target.value as Category | "")}
-                  className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
-                  <option value="">All Types</option>
-                  <option value="RPFP">RPFP</option>
-                  <option value="AHD">AHD</option>
-                  <option value="GAD">GAD</option>
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
-                  className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
-                  <option value="">All Years</option>
-                  {allYears.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
-                  className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
-                  <option value="">All Months</option>
-                  {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select value={filterDist} onChange={e => setFilterDist(e.target.value)}
-                  className="appearance-none bg-card border border-border rounded-lg px-3 py-2.5 pr-7 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all">
-                  <option value="">All Districts</option>
-                  {["I","II","III","IV","V"].map(d => <option key={d} value={d}>District {d}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <FilterChips
+                items={filterChips}
+                onRemove={(key) => {
+                  if (key === "search") setSearch("");
+                  if (key === "type") setFilterCat("");
+                  if (key === "year") setFilterYear("");
+                  if (key === "month") setFilterMonth("");
+                  if (key === "district") setFilterDist("");
+                  if (key === "municipality") setFilterMun("");
+                  if (key === "barangay") setFilterBgy("");
+                  if (key === "status") setFilterStatus("");
+                }}
+                onClearAll={clearAllFilters}
+              />
+              {filterChips.length > 0 && (
+                <button type="button" onClick={clearAllFilters} className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-accent transition-colors">
+                  Clear All Filters
+                </button>
+              )}
             </div>
           </div>
 
           {/* Table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+            <div className="overflow-hidden">
+              <table className="w-full border-collapse table-fixed text-[11px]">
                 <thead>
                   <tr className="border-b border-border" style={{ background:"#f0f2f4" }}>
                     {[
-                      { h:"Type",     cls:"text-left px-3 py-3" },
-                      { h:"Code",     cls:"text-left px-3 py-3" },
-                      { h:"Date",     cls:"text-left px-3 py-3" },
-                      { h:"Session",  cls:"text-left px-3 py-3" },
-                      { h:"District", cls:"text-center px-3 py-3" },
-                      { h:"Barangay", cls:"text-left px-3 py-3" },
-                      { h:"Municipality", cls:"text-left px-3 py-3" },
-                      { h:"Actual",   cls:"text-right px-3 py-3" },
-                      { h:"M",        cls:"text-right px-3 py-3" },
-                      { h:"F",        cls:"text-right px-3 py-3" },
-                      { h:"10–14 yrs old", cls:"text-right px-3 py-3" },
-                      { h:"15–19 yrs old", cls:"text-right px-3 py-3" },
-                      { h:"20 & above",   cls:"text-right px-3 py-3" },
-                      { h:"Documented By", cls:"text-left px-3 py-3" },
-                      { h:"Actions",  cls:"text-center px-3 py-3 print:hidden" },
-                    ].map(({ h, cls }) => (
-                      <th key={h} className={`${cls} text-xs font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap`}
-                       >{h}</th>
+                      { h:"Type",     cls:"text-left px-2 py-2 w-[7%]" },
+                      { h:"Code",     cls:"text-left px-2 py-2 w-[8%]" },
+                      { h:"Date", cls:"text-left px-2 py-2 w-[8%] cursor-pointer", sortable:"dateConduct" },
+                      { h:"Session", cls:"text-left px-2 py-2 w-[10%] hidden xl:table-cell" },
+                      { h:"District", cls:"text-center px-2 py-2 w-[6%] hidden lg:table-cell" },
+                      { h:"Barangay", cls:"text-left px-2 py-2 w-[12%]" },
+                      { h:"Municipality", cls:"text-left px-2 py-2 w-[12%]" },
+                      { h:"Actual", cls:"text-right px-2 py-2 w-[6%] cursor-pointer", sortable:"actualParticipants" },
+                      { h:"Total", cls:"text-right px-2 py-2 w-[6%] cursor-pointer", sortable:"total" },
+                      { h:"M", cls:"text-right px-2 py-2 w-[5%]" },
+                      { h:"F", cls:"text-right px-2 py-2 w-[5%]" },
+                      { h:"10–14", cls:"text-right px-2 py-2 w-[7%] hidden md:table-cell" },
+                      { h:"15–19", cls:"text-right px-2 py-2 w-[7%] hidden md:table-cell" },
+                      { h:"20+", cls:"text-right px-2 py-2 w-[7%] hidden md:table-cell" },
+                      { h:"Documented By", cls:"text-left px-2 py-2 w-[12%] hidden xl:table-cell" },
+                      { h:"Actions", cls:"text-center px-2 py-2 w-[10%] print:hidden" },
+                    ].map(({ h, cls, sortable }) => (
+                      <th key={h} className={`${cls} text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap`}
+                        onClick={() => {
+                          if (!sortable) return;
+                          setSortConfig(current => {
+                            if (current.key !== sortable) return { key: sortable as "dateConduct" | "actualParticipants" | "total", direction: "desc" };
+                            return { key: current.key, direction: current.direction === "asc" ? "desc" : "asc" };
+                          });
+                        }}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {h}
+                          {sortable && sortConfig.key === sortable && (
+                            <span className="text-[10px]">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
+                          )}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={16} className="py-16 text-center text-muted-foreground text-sm">
+                      <td colSpan={15} className="py-16 text-center text-muted-foreground text-sm">
                         <FileText size={28} className="mx-auto mb-3 opacity-25" />
-                        <p className="font-semibold">No records found</p>
-                        <p className="text-xs mt-1 opacity-70">Adjust filters or encode a new report.</p>
+                        <p className="font-semibold">
+                          No records match your filters — <button type="button" className="text-primary underline hover:no-underline" onClick={clearAllFilters}>try clearing filters</button>
+                        </p>
                       </td>
                     </tr>
                   ) : filtered.map((rec, i) => (
                     <tr key={rec.id}
                       className={`border-b border-border last:border-0 hover:bg-accent/50 transition-colors cursor-pointer ${i % 2 === 1 ? "bg-secondary/20" : ""}`}
                       onClick={() => setViewTarget(rec)}>
-                      <td className="px-3 py-3"><CategoryBadge category={rec.category} /></td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <span className="font-semibold text-primary text-xs">{rec.code}</span>
+                      <td className="px-2 py-2 align-top"><CategoryBadge category={rec.category} /></td>
+                      <td className="px-2 py-2 align-top whitespace-nowrap">
+                        <span className="font-semibold text-primary text-[10px]">{rec.code}</span>
                       </td>
-                      <td className="px-3 py-3 text-xs whitespace-nowrap">{rec.dateConduct}</td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <span className="text-xs text-foreground">{rec.sessionType}</span>
+                      <td className="px-2 py-2 align-top text-[10px] whitespace-nowrap">{rec.dateConduct}</td>
+                      <td className="px-2 py-2 align-top whitespace-nowrap hidden xl:table-cell">
+                        <span className="text-[10px] text-foreground">{rec.sessionType}</span>
                       </td>
-                      <td className="px-3 py-3 text-center text-xs font-bold">{rec.district}</td>
-                      <td className="px-3 py-3 text-sm whitespace-nowrap">{rec.barangay}</td>
-                      <td className="px-3 py-3 text-sm whitespace-nowrap">{rec.municipality}</td>
-                      {[rec.actualParticipants, rec.male, rec.female, rec.ageBracket1, rec.ageBracket2, rec.ageBracket3].map((v, vi) => (
-                        <td key={vi} className={`px-3 py-3 text-right text-xs ${vi === 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>{v}</td>
+                      <td className="px-2 py-2 align-top text-center text-[10px] font-bold hidden lg:table-cell">{rec.district}</td>
+                      <td className="px-2 py-2 align-top text-[10px] whitespace-nowrap truncate">{rec.barangay}</td>
+                      <td className="px-2 py-2 align-top text-[10px] whitespace-nowrap truncate">{rec.municipality}</td>
+                      <td className="px-2 py-2 align-top text-right text-[10px] font-semibold">{rec.actualParticipants}</td>
+                      <td className="px-2 py-2 align-top text-right text-[10px] font-semibold">{rec.actualParticipants}</td>
+                      {[rec.male, rec.female, rec.ageBracket1, rec.ageBracket2, rec.ageBracket3].map((v, vi) => (
+                        <td key={vi} className={`px-2 py-2 align-top text-right text-[10px] ${v === 0 ? "font-bold text-foreground" : "text-muted-foreground"} ${vi >= 2 ? "hidden md:table-cell" : ""}`}>
+                          {v}
+                        </td>
                       ))}
-                      <td className="px-3 py-3 text-xs whitespace-nowrap">{rec.documentedBy}</td>
-                      <td className="px-3 py-3 print:hidden" onClick={e => e.stopPropagation()}>
+                      <td className="px-2 py-2 align-top text-[10px] whitespace-nowrap hidden xl:table-cell">{rec.documentedBy}</td>
+                      <td className="px-2 py-2 align-top print:hidden" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-0.5">
                           <button
                             onClick={() => setPreviewTarget({ mode: "single", record: rec })}
-                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="Export PDF">
-                            <Download size={13} />
+                            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="Export PDF">
+                            <Download size={12} />
                           </button>
-                          <div className="w-px h-3.5 bg-border mx-0.5" />
+                          <div className="w-px h-3 bg-border mx-0.5" />
                           <button onClick={() => onEdit(rec)}
-                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="Edit">
-                            <Edit2 size={13} />
+                            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="Edit">
+                            <Edit2 size={12} />
                           </button>
                           <button onClick={() => setDeleteTarget(rec)}
-                            className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
-                            <Trash2 size={13} />
+                            className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
+                            <Trash2 size={12} />
                           </button>
                           {rec.category === "RPFP" && (
                             <>
-                              <div className="w-px h-3.5 bg-border mx-0.5" />
+                              <div className="w-px h-3 bg-border mx-0.5" />
                               <button onClick={() => onOpenRoster(rec)}
-                                className="p-1.5 rounded hover:bg-teal-50 text-muted-foreground hover:text-teal-700 transition-colors" title="Participant List (Form 1)">
-                                <BookUser size={13} />
+                                className="p-1 rounded hover:bg-teal-50 text-muted-foreground hover:text-teal-700 transition-colors" title="Participant List (Form 1)">
+                                <BookUser size={12} />
                               </button>
                             </>
                           )}
@@ -2182,12 +2516,11 @@ function RecordsView({ user, onLogout, records, onEdit, onDelete, onNewReport, o
                 {filtered.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-primary/20 bg-primary/5">
-                      <td colSpan={7} className="px-3 py-3 text-xs font-bold uppercase tracking-widest"
-                       >Total</td>
+                      <td colSpan={7} className="px-2 py-2 text-[10px] font-bold uppercase tracking-widest">Total</td>
                       {[totals.actual, totals.male, totals.female, totals.b1, totals.b2, totals.b3].map((v, i) => (
-                        <td key={i} className="px-3 py-3 text-right text-xs font-bold">{v}</td>
+                        <td key={i} className={`px-2 py-2 text-right text-[10px] font-bold ${i >= 3 ? "hidden md:table-cell" : ""}`}>{v}</td>
                       ))}
-                      <td colSpan={2} />
+                      <td colSpan={2} className="hidden md:table-cell" />
                     </tr>
                   </tfoot>
                 )}
@@ -2368,6 +2701,9 @@ function MonthlySummaryView({ user, onLogout, records, onBack }: {
   const [category, setCategory]       = useState<Category>("AHD");
   const [selMonth, setSelMonth]        = useState(MONTHS[now.getMonth()]);
   const [selYear, setSelYear]          = useState(String(now.getFullYear()));
+  const [selMun, setSelMun]            = useState("");
+  const [selBgy, setSelBgy]            = useState("");
+  const [selQuarter, setSelQuarter]    = useState<string>("");
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
   const [toast, setToast]              = useState("");
 
@@ -2381,12 +2717,28 @@ function MonthlySummaryView({ user, onLogout, records, onBack }: {
   const years      = Array.from(new Set(records.map(r => r.reportYear))).sort().reverse();
   if (!years.includes(selYear)) years.unshift(selYear);
 
-  const filtered = useMemo(() =>
-    records
-      .filter(r => r.category === category && r.reportMonth === selMonth && r.reportYear === selYear)
-      .sort((a, b) => a.dateConduct.localeCompare(b.dateConduct)),
-    [records, category, selMonth, selYear]
-  );
+  const quarterMonths: Record<string, string[]> = {
+    Q1: ["January", "February", "March"],
+    Q2: ["April", "May", "June"],
+    Q3: ["July", "August", "September"],
+    Q4: ["October", "November", "December"],
+    YTD: MONTHS,
+  };
+
+  const filtered = useMemo(() => {
+    const monthList = selQuarter ? quarterMonths[selQuarter] : [selMonth];
+
+    return records
+      .filter(r => {
+        if (r.category !== category) return false;
+        if (!monthList.includes(r.reportMonth)) return false;
+        if (r.reportYear !== selYear) return false;
+        if (selMun && r.municipality !== selMun) return false;
+        if (selBgy && r.barangay !== selBgy) return false;
+        return true;
+      })
+      .sort((a, b) => a.dateConduct.localeCompare(b.dateConduct));
+  }, [records, category, selMonth, selYear, selMun, selBgy, selQuarter]);
 
   const totals = useMemo(() => ({
     type: cfg.typeColumns.map(tc => filtered.filter(r => r.sessionType === tc).length),
@@ -2445,11 +2797,35 @@ function MonthlySummaryView({ user, onLogout, records, onBack }: {
               ))}
             </div>
             <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-medium">Quarter</span>
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-input-background p-1">
+                {(["Q1","Q2","Q3","Q4","YTD"] as const).map(q => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => {
+                      setSelQuarter(q);
+                      if (q !== "YTD") {
+                        const qMonths = quarterMonths[q];
+                        setSelMonth(qMonths[0]);
+                      }
+                    }}
+                    className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${selQuarter === q ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* Month */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground font-medium">Month</label>
               <div className="relative">
-                <select value={selMonth} onChange={e => setSelMonth(e.target.value)}
+                <select value={selMonth} onChange={e => {
+                  setSelMonth(e.target.value);
+                  setSelQuarter("");
+                }}
                   className="appearance-none pl-3 pr-7 py-1.5 bg-input-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 transition-all">
                   {MONTHS.map(m => <option key={m}>{m}</option>)}
                 </select>
@@ -2467,8 +2843,20 @@ function MonthlySummaryView({ user, onLogout, records, onBack }: {
                 <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <MunicipalityBarangayFilter
+                municipality={selMun}
+                barangay={selBgy}
+                onMunicipalityChange={setSelMun}
+                onBarangayChange={setSelBgy}
+                municipalityLabel="Municipality"
+                barangayLabel="Barangay"
+                selectAllMunicipalityText="All Municipalities"
+                selectAllBarangayText="All Barangays"
+              />
+            </div>
             <div className="ml-auto text-xs text-muted-foreground font-medium">
-              {filtered.length} record{filtered.length !== 1 ? "s" : ""} · {selMonth} {selYear}
+              {filtered.length} record{filtered.length !== 1 ? "s" : ""} · {selQuarter || selMonth} {selYear}
             </div>
           </div>
 
@@ -2522,7 +2910,7 @@ function MonthlySummaryView({ user, onLogout, records, onBack }: {
                     <tr>
                       <td colSpan={5 + cfg.typeColumns.length + 4 + cfg.ageBrackets.length + 5}
                         className="border border-border py-10 text-center text-muted-foreground italic">
-                        No reports encoded for {selMonth} {selYear} · {category}
+                        No reports encoded for {selQuarter || selMonth} {selYear} · {category} in this area — try a different filter or check back later
                       </td>
                     </tr>
                   ) : filtered.map((r, i) => {
@@ -3215,6 +3603,7 @@ function RPFPRosterListView({
   const [filterMun, setFilterMun] = useState("");
   const [filterBgy, setFilterBgy] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -3226,11 +3615,13 @@ function RPFPRosterListView({
     forms.filter(f => !filterMun || f.municipality === filterMun).map(f => f.barangay).filter(Boolean)
   )).sort(), [forms, filterMun]);
 
-  const filtered = useMemo(() => forms.filter(f =>
-    (!filterMun || f.municipality === filterMun) &&
-    (!filterBgy || f.barangay === filterBgy) &&
-    (!filterDate || f.dateConduct === filterDate)
-  ), [forms, filterMun, filterBgy, filterDate]);
+  const filtered = useMemo(() => forms.filter(f => {
+    const matchesMunicipality = !filterMun || f.municipality === filterMun;
+    const matchesBarangay = !filterBgy || f.barangay === filterBgy;
+    const matchesDate = !filterDate || f.dateConduct === filterDate;
+    const matchesSearch = !searchTerm || `${f.municipality} ${f.barangay} ${f.classNo}`.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesMunicipality && matchesBarangay && matchesDate && matchesSearch;
+  }), [forms, filterMun, filterBgy, filterDate, searchTerm]);
 
   const selectedForm = selectedFormId !== null ? forms.find(f => f.id === selectedFormId) ?? null : null;
 
@@ -3719,32 +4110,40 @@ function RPFPRosterListView({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Municipality</label>
-              <select value={filterMun} onChange={e => { setFilterMun(e.target.value); setFilterBgy(""); }} className={inputCls}>
-                <option value="">All</option>
-                {municipalities.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+          <div className="flex flex-col gap-3">
+            <div className="relative max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search municipality, barangay, or class/code number"
+                className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/50 transition-all"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Barangay</label>
-              <select value={filterBgy} onChange={e => setFilterBgy(e.target.value)} className={inputCls}>
-                <option value="">All</option>
-                {barangays.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
+            <div className="flex flex-wrap gap-3 items-center">
+              <MunicipalityBarangayFilter
+                municipality={filterMun}
+                barangay={filterBgy}
+                onMunicipalityChange={setFilterMun}
+                onBarangayChange={setFilterBgy}
+                municipalityLabel="Municipality"
+                barangayLabel="Barangay"
+                selectAllMunicipalityText="All"
+                selectAllBarangayText="All"
+              />
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Date Conducted</label>
+                <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className={inputCls}
+                  style={{ colorScheme: "light", color: "var(--foreground)" }} />
+              </div>
+              {(filterMun || filterBgy || filterDate || searchTerm) && (
+                <button onClick={() => { setFilterMun(""); setFilterBgy(""); setFilterDate(""); setSearchTerm(""); }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                  <X size={12} /> Clear
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Date Conducted</label>
-              <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className={inputCls}
-                style={{ colorScheme: "light", color: "var(--foreground)" }} />
-            </div>
-            {(filterMun || filterBgy || filterDate) && (
-              <button onClick={() => { setFilterMun(""); setFilterBgy(""); setFilterDate(""); }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
-                <X size={12} /> Clear
-              </button>
-            )}
           </div>
         </div>
 
